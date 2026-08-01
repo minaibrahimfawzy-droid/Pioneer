@@ -686,7 +686,17 @@ tbody tr:last-child td { border-bottom: none; }
     .form-grid { grid-template-columns: 1fr; }
     .section-header { flex-direction: column; align-items: flex-start; }
     .settings-grid { grid-template-columns: 1fr; }
-    td, th { padding: 9px 10px; font-size: 11px; }
+    
+    /* Responsive Data Tables for Mobile */
+    .table-container { overflow-x: visible; background: transparent; box-shadow: none; padding: 0; }
+    table { display: block; border: none; }
+    thead { display: none; }
+    tbody { display: flex; flex-direction: column; gap: 12px; }
+    tr { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); padding: 8px 12px; box-shadow: var(--shadow-sm); }
+    td { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 13px; border-bottom: 1px solid var(--bg-2); text-align: left; }
+    td:last-child { border-bottom: none; }
+    td::before { content: attr(data-label); font-weight: 700; color: var(--text-muted); font-size: 11px; margin-left: auto; padding-left: 15px; text-align: right; }
+    
     .filter-bar { gap: 4px; }
     .filter-btn { padding: 4px 10px; font-size: 11px; }
     .archive-grid { grid-template-columns: 1fr; }

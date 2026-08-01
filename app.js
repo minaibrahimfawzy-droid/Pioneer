@@ -481,14 +481,16 @@ async function loadProjectsData() {
 
     tbody.innerHTML = list.map(p => `
         <tr>
-            <td><code style="font-family:var(--font-mono);font-weight:700;color:var(--primary);background:var(--bg);padding:2px 8px;border-radius:4px;">${escHtml(p.projectCode)}</code></td>
-            <td><strong>${escHtml(p.projectName)}</strong></td>
-            <td>${escHtml(p.city)}</td>
-            <td>${escHtml(p.country)}</td>
-            <td><span class="status-badge online">نشط</span></td>
-            <td>
-                <button class="btn btn-warning btn-sm" onclick="promptEditProject('${escAttr(p.projectCode)}','${escAttr(p.projectName)}')">✏️ تعديل</button>
-                <button class="btn btn-danger btn-sm" style="margin-right:4px;" onclick="confirmDeleteProject('${escAttr(p.projectCode)}')">🗑️ حذف</button>
+            <td data-label="كود"><code style="font-family:var(--font-mono);font-weight:700;color:var(--primary);background:var(--bg);padding:2px 8px;border-radius:4px;">${escHtml(p.projectCode)}</code></td>
+            <td data-label="الاسم"><strong>${escHtml(p.projectName)}</strong></td>
+            <td data-label="المدينة">${escHtml(p.city)}</td>
+            <td data-label="الدولة">${escHtml(p.country)}</td>
+            <td data-label="الحالة"><span class="status-badge online">نشط</span></td>
+            <td data-label="الإجراءات">
+                <div style="display:flex;gap:4px;">
+                    <button class="btn btn-warning btn-sm" onclick="promptEditProject('${escAttr(p.projectCode)}','${escAttr(p.projectName)}')">✏️ تعديل</button>
+                    <button class="btn btn-danger btn-sm" onclick="confirmDeleteProject('${escAttr(p.projectCode)}')">🗑️ حذف</button>
+                </div>
             </td>
         </tr>
     `).join('');
@@ -537,15 +539,17 @@ async function loadBuildingsData() {
 
     tbody.innerHTML = list.map(b => `
         <tr>
-            <td><strong>عمارة ${escHtml(b.buildingCode)}</strong></td>
-            <td><code style="font-family:var(--font-mono);font-size:12px;color:var(--primary);background:var(--bg);padding:2px 8px;border-radius:4px;">${escHtml(b.projectCode)}</code></td>
-            <td>${b.floors || '—'}</td>
-            <td>${b.unitPerFloor || '—'}</td>
-            <td><span class="status-badge info">${b.unitsCount || 0} وحدة</span></td>
-            <td>
-                <button class="btn btn-secondary btn-sm" onclick="viewBuildingUnits('${escAttr(b.buildingCode)}','${escAttr(b.projectCode)}')">🏠 الوحدات</button>
-                <button class="btn btn-warning btn-sm" style="margin-right:4px;" onclick="promptEditBuilding('${escAttr(b.buildingCode)}','${escAttr(b.projectCode)}',${b.unitsCount})">✏️ تعديل</button>
-                <button class="btn btn-danger btn-sm" style="margin-right:4px;" onclick="confirmDeleteBuilding('${escAttr(b.buildingCode)}','${escAttr(b.projectCode)}')">🗑️ حذف</button>
+            <td data-label="كود العمارة"><strong>عمارة ${escHtml(b.buildingCode)}</strong></td>
+            <td data-label="المشروع"><code style="font-family:var(--font-mono);font-size:12px;color:var(--primary);background:var(--bg);padding:2px 8px;border-radius:4px;">${escHtml(b.projectCode)}</code></td>
+            <td data-label="الأدوار">${b.floors || '—'}</td>
+            <td data-label="وحدات/دور">${b.unitPerFloor || '—'}</td>
+            <td data-label="إجمالي الوحدات"><span class="status-badge info">${b.unitsCount || 0} وحدة</span></td>
+            <td data-label="الإجراءات">
+                <div style="display:flex;gap:4px;">
+                    <button class="btn btn-secondary btn-sm" onclick="viewBuildingUnits('${escAttr(b.buildingCode)}','${escAttr(b.projectCode)}')">🏠 الوحدات</button>
+                    <button class="btn btn-warning btn-sm" onclick="promptEditBuilding('${escAttr(b.buildingCode)}','${escAttr(b.projectCode)}',${b.unitsCount})">✏️ تعديل</button>
+                    <button class="btn btn-danger btn-sm" onclick="confirmDeleteBuilding('${escAttr(b.buildingCode)}','${escAttr(b.projectCode)}')">🗑️ حذف</button>
+                </div>
             </td>
         </tr>
     `).join('');
@@ -755,18 +759,20 @@ function renderSearchResults(results) {
 
         return `
         <tr class="row-${occType}">
-            <td><code style="font-family:var(--font-mono);font-weight:700;color:var(--primary);">${escHtml(u.unitCode)}</code></td>
-            <td>${occ ? `<div style="font-weight:700;">${escHtml(occ.fullName)}</div><div style="font-size:11px;color:var(--text-muted);">${escHtml(occ.idNumber||'')}</div>` : '<span style="color:var(--text-muted);">—</span>'}</td>
-            <td><span class="occ-badge ${occClass}">${occLabel}</span></td>
-            <td>الدور ${u.floor}</td>
-            <td><span class="status-badge ${statusColors[u.status]||'online'}">${escHtml(u.status)}</span></td>
-            <td>${expiryHtml}</td>
-            <td style="text-align:center;">${u.hasPets ? '🐾' : '—'}</td>
-            <td style="text-align:center;">${u.hasElderly ? '👴' : '—'}</td>
-            <td>
-                <button class="btn btn-primary btn-sm" onclick="showUnitOperations('${escAttr(u.unitCode)}')">⚙️</button>
-                <button class="btn btn-warning btn-sm" style="margin-right:3px;" onclick="promptEditUnitStatus('${escAttr(u.unitCode)}','${escAttr(u.status)}')">✏️</button>
-                <button class="btn btn-danger btn-sm" style="margin-right:3px;" onclick="confirmDeleteUnit('${escAttr(u.unitCode)}')">🗑️</button>
+            <td data-label="كود الوحدة"><code style="font-family:var(--font-mono);font-weight:700;color:var(--primary);">${escHtml(u.unitCode)}</code></td>
+            <td data-label="الشاغل">${occ ? `<div style="font-weight:700;">${escHtml(occ.fullName)}</div><div style="font-size:11px;color:var(--text-muted);">${escHtml(occ.idNumber||'')}</div>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+            <td data-label="النوع"><span class="occ-badge ${occClass}">${occLabel}</span></td>
+            <td data-label="الدور">الدور ${u.floor}</td>
+            <td data-label="الحالة"><span class="status-badge ${statusColors[u.status]||'online'}">${escHtml(u.status)}</span></td>
+            <td data-label="انتهاء العقد">${expiryHtml}</td>
+            <td data-label="حيوانات" style="text-align:center;">${u.hasPets ? '🐾' : '—'}</td>
+            <td data-label="كبار سن" style="text-align:center;">${u.hasElderly ? '👴' : '—'}</td>
+            <td data-label="الإجراءات">
+                <div style="display:flex;gap:3px;">
+                    <button class="btn btn-primary btn-sm" onclick="showUnitOperations('${escAttr(u.unitCode)}')">⚙️</button>
+                    <button class="btn btn-warning btn-sm" onclick="promptEditUnitStatus('${escAttr(u.unitCode)}','${escAttr(u.status)}')">✏️</button>
+                    <button class="btn btn-danger btn-sm" onclick="confirmDeleteUnit('${escAttr(u.unitCode)}')">🗑️</button>
+                </div>
             </td>
         </tr>`;
     }).join('');
@@ -912,7 +918,7 @@ async function generateReport(type) {
         tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center;padding:24px;color:var(--text-muted);">لا توجد بيانات.</td></tr>`;
         return;
     }
-    tbody.innerHTML = data.map(row => `<tr>${row.map(c => `<td>${escHtml(String(c))}</td>`).join('')}</tr>`).join('');
+    tbody.innerHTML = data.map(row => `<tr>${row.map((c, i) => `<td data-label="${escHtml(cols[i])}">${escHtml(String(c))}</td>`).join('')}</tr>`).join('');
 }
 
 function exportReportCSV() {
