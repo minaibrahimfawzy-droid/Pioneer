@@ -387,7 +387,7 @@ tr.row-vacant td:first-child { border-right: 4px solid var(--vacant-color); }
 ══════════════════════════════════════ */
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 12px; flex-wrap: wrap; }
 .section-header h2 { font-size: 18px; font-weight: 800; color: var(--primary); }
-.table-container { background: var(--card); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); overflow: hidden; }
+.table-container { background: var(--card); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); overflow-x: auto; overflow-y: hidden; }
 table { width: 100%; border-collapse: collapse; text-align: right; font-size: 13px; }
 thead tr { background: linear-gradient(90deg, var(--primary), var(--primary-light)); }
 th { padding: 12px 14px; color: rgba(255,255,255,.9); font-weight: 700; font-size: 11px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
