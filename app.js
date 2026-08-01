@@ -50,6 +50,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     initAppEventListeners();
 
+    // إظهار شريط النجاح بعد التحديث
+    if (localStorage.getItem('ppms_updated') === 'true') {
+        localStorage.removeItem('ppms_updated');
+        const successBanner = document.getElementById('success-update-banner');
+        if (successBanner) {
+            successBanner.classList.remove('hidden');
+            setTimeout(() => {
+                successBanner.classList.add('hidden');
+            }, 5000);
+        }
+    }
+
     // تحديث formula في شاشة التفعيل
     const deviceId    = localStorage.getItem('ppms_device_id') || '—';
     const formulaEl   = document.getElementById('device-id-formula');
@@ -426,7 +438,7 @@ async function handleSaveProject() {
     const name    = document.getElementById('modal-project-name')?.value.trim();
     const city    = document.getElementById('modal-project-city')?.value.trim()    || 'القاهرة';
     const country = document.getElementById('modal-project-country')?.value.trim() || 'مصر';
-    const numBuildings = parseInt(document.getElementById('modal-project-num-buildings')?.value, 10) || 1;
+    const firstBuildingCode = document.getElementById('modal-project-building-code')?.value.trim().toUpperCase() || 'A';
     const initStatus   = getStatusValue('modal-project-init-status', 'modal-project-custom-status');
 
     // قراءة إعدادات كل دور
@@ -469,30 +481,34 @@ async function handleSaveProject() {
         const totalUnitsPerBuilding = floorConfigs.reduce((s, c) => s + c.units, 0);
         pStore.put({ projectCode: code, projectName: name, city, country, floors: totalFloors, unitPerFloor: floorConfigs[0]?.units || 4, area: floorConfigs[0]?.area || 120, createdAt: new Date().toISOString() });
 
-        const allLetters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
-        const buildingLetters = allLetters.slice(0, numBuildings);
+        bStore.add({ projectCode: code, buildingCode: firstBuildingCode, floors: totalFloors, unitPerFloor: floorConfigs[0]?.units || 4, unitsCount: totalUnitsPerBuilding, createdAt: new Date().toISOString() });
 
-        buildingLetters.forEach(letter => {
-            bStore.add({ projectCode: code, buildingCode: letter, floors: totalFloors, unitPerFloor: floorConfigs[0]?.units || 4, unitsCount: totalUnitsPerBuilding, createdAt: new Date().toISOString() });
-
-            let seqNum = 1;
-            for (let f = 1; f <= totalFloors; f++) {
-                const { units, area } = floorConfigs[f - 1];
-                for (let u = 1; u <= units; u++) {
-                    const unitCode = `${code}-${letter}${seqNum}`;
-                    uStore.put({ unitCode, projectCode: code, buildingCode: letter, floor: f, unitInFloor: u, area, rooms: area >= 150 ? 4 : 3, type: 'شقة سكنية', status: initStatus, hasPets: false, hasElderly: false, occupantType: 'vacant', updatedAt: new Date().toISOString() });
-                    seqNum++;
-                }
+        let seqNum = 1;
+        for (let f = 1; f <= totalFloors; f++) {
+            const { units, area } = floorConfigs[f - 1];
+            for (let u = 1; u <= units; u++) {
+                const uCode = `${code}-${firstBuildingCode}${seqNum}`;
+                uStore.add({
+                    projectCode: code,
+                    buildingCode: firstBuildingCode,
+                    floorNumber: f,
+                    unitCode: uCode,
+                    area: area,
+                    status: initStatus,
+                    price: 0,
+                    owner: '',
+                    createdAt: new Date().toISOString()
+                });
+                seqNum++;
             }
-        });
+        }
 
         await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
 
         closeModal('project-modal');
         document.getElementById('modal-project-code').value = '';
         document.getElementById('modal-project-name').value = '';
-        const totalAll = buildingLetters.length * totalUnitsPerBuilding;
-        showToast(`✅ تم إنشاء "${name}": ${numBuildings} عمارة × ${totalUnitsPerBuilding} وحدة = ${totalAll} وحدة.`);
+        showToast(`✅ تم إنشاء "${name}" (عمارة ${firstBuildingCode}): ${totalUnitsPerBuilding} وحدة.`);
         addLogEntry('admin', 'ADD_PROJECT', `${code} — ${name}: ${totalFloors} دور`);
         loadProjectsData();
         loadBuildingsData();
@@ -558,9 +574,8 @@ function updateFloorPreview() {
     container.querySelectorAll('.floor-config-row').forEach(row => {
         total += parseInt(row.querySelector('.input-units')?.value, 10) || 0;
     });
-    const numB = parseInt(document.getElementById('modal-project-num-buildings')?.value, 10) || 1;
     preview.innerHTML = total > 0
-        ? `إجمالي لكل عمارة: <strong>${total} وحدة</strong> — إجمالي المشروع: <strong>${total * numB} وحدة</strong>`
+        ? `إجمالي لكل عمارة: <strong>${total} وحدة</strong>`
         : '';
 }
 
@@ -682,41 +697,67 @@ async function openBuildingModalFlow() {
 async function handleSaveBuilding() {
     const projectCode  = document.getElementById('modal-building-project-select')?.value;
     const buildingCode = document.getElementById('modal-building-code')?.value.trim().toUpperCase();
-    const floors       = parseInt(document.getElementById('modal-building-floors')?.value, 10)          || 5;
-    const unitPerFloor = parseInt(document.getElementById('modal-building-units-per-floor')?.value, 10) || 4;
-    const area         = parseInt(document.getElementById('modal-building-area')?.value, 10)            || 120;
-    const initStatus   = document.getElementById('modal-building-init-status')?.value || 'فارغة';
+    const initStatus   = getStatusValue('modal-building-init-status', 'modal-building-custom-status');
     const saveBtn      = document.getElementById('btn-save-building');
 
     if (!buildingCode) { showToast('أدخل كود العمارة.', 'error'); return; }
-    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spinner"></span> جاري الحفظ...'; }
 
-    const totalUnits = floors * unitPerFloor;
+    const floorConfigs = [];
+    const floorConfigsEl = document.getElementById('building-floor-configs-container');
+    if (floorConfigsEl) {
+        floorConfigsEl.querySelectorAll('.floor-config-row').forEach(row => {
+            const units = parseInt(row.querySelector('.input-units')?.value, 10) || 4;
+            const area  = parseInt(row.querySelector('.input-area')?.value, 10)  || 120;
+            floorConfigs.push({ units, area });
+        });
+    }
+    if (!floorConfigs.length) { showToast('أضف دوراً واحداً على الأقل.', 'error'); return; }
+
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spinner"></span> جاري الحفظ...'; }
 
     try {
         const db = await openDB();
-        const tx = db.transaction(['buildings', 'units'], 'readwrite');
 
-        tx.objectStore('buildings').add({ projectCode, buildingCode, floors, unitPerFloor, unitsCount: totalUnits, createdAt: new Date().toISOString() });
+        // Check if building already exists
+        const exists = await new Promise(res => {
+            const req = db.transaction(['buildings'], 'readonly').objectStore('buildings')
+                .index('projectCode').getAll(projectCode);
+            req.onsuccess = () => res(req.result.some(b => b.buildingCode === buildingCode));
+        });
+        if (exists) { 
+            showToast(`العمارة ${buildingCode} موجودة مسبقاً!`, 'error'); 
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '💾 حفظ العمارة وتوليد الوحدات'; }
+            return; 
+        }
+
+        const tx = db.transaction(['buildings', 'units'], 'readwrite');
+        
+        const totalFloors = floorConfigs.length;
+        const totalUnits = floorConfigs.reduce((s, c) => s + c.units, 0);
+
+        tx.objectStore('buildings').add({ projectCode, buildingCode, floors: totalFloors, unitPerFloor: floorConfigs[0]?.units || 4, unitsCount: totalUnits, createdAt: new Date().toISOString() });
 
         const uStore = tx.objectStore('units');
-        for (let f = 1; f <= floors; f++) {
-            for (let u = 1; u <= unitPerFloor; u++) {
-                const unitCode = generateUnitCode(projectCode, buildingCode, f, u, unitPerFloor);
+        let seqNum = 1;
+        for (let f = 1; f <= totalFloors; f++) {
+            const { units, area } = floorConfigs[f - 1];
+            for (let u = 1; u <= units; u++) {
+                const unitCode = `${projectCode}-${buildingCode}${seqNum}`;
                 uStore.put({ unitCode, projectCode, buildingCode, floor: f, unitInFloor: u, area, rooms: area >= 150 ? 4 : 3, type: 'شقة سكنية', status: initStatus, hasPets: false, hasElderly: false, occupantType: 'vacant', updatedAt: new Date().toISOString() });
+                seqNum++;
             }
         }
 
         await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
         closeModal('building-modal');
-        showToast(`تم إنشاء العمارة "${buildingCode}": ${floors} دور × ${unitPerFloor} وحدة = ${totalUnits} وحدة.`);
+        showToast(`تم إنشاء العمارة "${buildingCode}": ${totalFloors} دور، بإجمالي ${totalUnits} وحدة.`);
         addLogEntry('admin', 'ADD_BUILDING', `${buildingCode}/${projectCode}: ${totalUnits} وحدة`);
         loadBuildingsData(); loadDashboardData();
     } catch (e) {
         showToast('خطأ في حفظ العمارة.', 'error');
         console.error(e);
     } finally {
-        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '💾 حفظ وتوليد الوحدات'; }
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '💾 حفظ العمارة وتوليد الوحدات'; }
     }
 }
 

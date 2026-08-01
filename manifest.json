@@ -6,8 +6,8 @@
   "lang": "ar",
   "dir": "rtl",
 
-  "start_url": "/Pioneer/",
-  "scope": "/Pioneer/",
+  "start_url": "./index.html",
+  "scope": "./",
 
   "display": "standalone",
   "orientation": "portrait-primary",

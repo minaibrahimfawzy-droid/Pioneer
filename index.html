@@ -25,10 +25,16 @@
     </div>
 
     <!-- Update Alert Banner -->
-    <div id="update-alert-banner" class="lease-alert-banner hidden" style="background: linear-gradient(90deg, #b91c1c, #dc2626); cursor: pointer;" onclick="window.location.reload()">
+    <div id="update-alert-banner" class="lease-alert-banner hidden" style="background: linear-gradient(90deg, #b91c1c, #dc2626); cursor: pointer;" onclick="localStorage.setItem('ppms_updated', 'true'); window.location.reload()">
         <span id="update-alert-icon">🔄</span>
         <span id="update-alert-text">تحديث جديد متوفر! (اضغط هنا للتحديث)</span>
         <button onclick="event.stopPropagation(); document.getElementById('update-alert-banner').classList.add('hidden')" class="btn-close-banner">×</button>
+    </div>
+
+    <!-- Success Update Banner -->
+    <div id="success-update-banner" class="lease-alert-banner hidden" style="background: linear-gradient(90deg, #15803d, #166534);">
+        <span id="success-update-icon">✅</span>
+        <span id="success-update-text">تم تحديث التطبيق بنجاح! 🚀</span>
     </div>
 
     <!-- ══ شاشة التفعيل ══ -->
@@ -301,7 +307,7 @@
                 </div>
             </div>
 
-            <!-- عدد العمائر -->
+            <!-- إعداد العمارة الافتراضية -->
             <div class="unit-config-box" style="margin-top:14px;">
                 <div class="form-grid">
                     <div class="form-group">
@@ -330,20 +336,20 @@
             <!-- إعداد الأدوار (ديناميكي) -->
             <div class="unit-config-box" style="margin-top:14px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                    <h4 style="margin:0;">📐 إعداد الأدوار (كل دور على حدة)</h4>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="addFloorRow()">➕ إضافة دور</button>
+                    <h4 style="margin:0;">📐 إعداد الأدوار للعمارة (كل دور على حدة)</h4>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="addFloorRow('floor-configs-container', 'project-units-preview')">➕ إضافة دور</button>
                 </div>
                 <div id="floor-configs-container">
                     <!-- الدور الأول الافتراضي -->
                     <div class="floor-config-row">
                         <div class="floor-row-header">
                             <span class="floor-label">الدور 1</span>
-                            <button type="button" class="btn btn-danger btn-xs" onclick="removeFloorRow(this)">✕</button>
+                            <button type="button" class="btn btn-danger btn-xs" onclick="removeFloorRow(this, 'floor-configs-container', 'project-units-preview')">✕</button>
                         </div>
                         <div class="floor-row-inputs">
                             <div class="form-group">
                                 <label>وحدات في الدور:</label>
-                                <input type="number" class="input-units" value="4" min="1" max="50" oninput="updateFloorPreview()">
+                                <input type="number" class="input-units" value="4" min="1" max="50" oninput="updateFloorPreview('floor-configs-container', 'project-units-preview')">
                             </div>
                             <div class="form-group">
                                 <label>مساحة الوحدة (م²):</label>
@@ -362,44 +368,65 @@
 
     <!-- Modal: عمارة إضافية -->
     <div id="building-modal" class="modal hidden" role="dialog" aria-modal="true">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:580px;max-height:90vh;overflow-y:auto;">
             <span class="close-modal">×</span>
             <h2>🏗️ إضافة عمارة إضافية</h2>
             <div class="form-group">
                 <label>اختر المشروع:</label>
                 <select id="modal-building-project-select"></select>
             </div>
-            <div class="form-group">
-                <label for="modal-building-code">كود العمارة (مثل: O):</label>
-                <input type="text" id="modal-building-code" placeholder="O" maxlength="10" style="font-family:var(--font-mono);font-weight:700;text-transform:uppercase;text-align:center;letter-spacing:3px;">
-            </div>
-            <div class="unit-config-box">
-                <h4>🏗️ إعدادات الوحدات</h4>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="modal-building-floors">عدد الأدوار:</label>
-                        <input type="number" id="modal-building-floors" value="5" min="1" max="50">
-                    </div>
-                    <div class="form-group">
-                        <label for="modal-building-units-per-floor">وحدات في كل دور:</label>
-                        <input type="number" id="modal-building-units-per-floor" value="4" min="1" max="20">
-                    </div>
-                    <div class="form-group">
-                        <label for="modal-building-area">مساحة الوحدة (م²):</label>
-                        <input type="number" id="modal-building-area" value="120" min="20">
-                    </div>
-                    <div class="form-group">
-                        <label for="modal-building-init-status">الحالة الابتدائية:</label>
-                        <select id="modal-building-init-status">
-                            <option value="فارغة">فارغة</option>
-                            <option value="جاهزة">جاهزة</option>
-                            <option value="تحت الإنشاء">تحت الإنشاء</option>
-                            <option value="تحت التشطيب">تحت التشطيب</option>
-                        </select>
+            
+            <div class="form-grid" style="margin-bottom:14px;">
+                <div class="form-group">
+                    <label for="modal-building-code">كود العمارة (مثل: B):</label>
+                    <input type="text" id="modal-building-code" placeholder="B" maxlength="10" style="font-family:var(--font-mono);font-weight:700;text-transform:uppercase;text-align:center;letter-spacing:3px;">
+                </div>
+                <div class="form-group">
+                    <label for="modal-building-init-status">الحالة الابتدائية للوحدات:</label>
+                    <select id="modal-building-init-status" onchange="onStatusSelectChange(this)">
+                        <option value="فارغة">⬜ فارغة</option>
+                        <option value="جاهزة">✅ جاهزة</option>
+                        <option value="تحت الإنشاء">🏗️ تحت الإنشاء</option>
+                        <option value="تحت التشطيب">🔨 تحت التشطيب</option>
+                        <option value="مؤجرة">🟡 مؤجرة</option>
+                        <option value="مملوكة">🟢 مملوكة</option>
+                        <option value="__custom__">✏️ اكتبها بنفسك...</option>
+                    </select>
+                    <div class="custom-status-group" style="display:none;margin-top:6px;">
+                        <input type="text" id="modal-building-custom-status" placeholder="اكتب الحالة هنا...">
                     </div>
                 </div>
             </div>
-            <button id="btn-save-building" class="btn btn-primary" style="width:100%;padding:13px;">💾 حفظ وتوليد الوحدات</button>
+
+            <!-- إعداد الأدوار (ديناميكي) للعمارة -->
+            <div class="unit-config-box">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h4 style="margin:0;">📐 إعداد الأدوار (كل دور على حدة)</h4>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="addFloorRow('building-floor-configs-container', 'building-units-preview')">➕ إضافة دور</button>
+                </div>
+                <div id="building-floor-configs-container">
+                    <!-- الدور الأول الافتراضي -->
+                    <div class="floor-config-row">
+                        <div class="floor-row-header">
+                            <span class="floor-label">الدور 1</span>
+                            <button type="button" class="btn btn-danger btn-xs" onclick="removeFloorRow(this, 'building-floor-configs-container', 'building-units-preview')">✕</button>
+                        </div>
+                        <div class="floor-row-inputs">
+                            <div class="form-group">
+                                <label>وحدات في الدور:</label>
+                                <input type="number" class="input-units" value="4" min="1" max="50" oninput="updateFloorPreview('building-floor-configs-container', 'building-units-preview')">
+                            </div>
+                            <div class="form-group">
+                                <label>مساحة الوحدة (م²):</label>
+                                <input type="number" class="input-area" value="120" min="20">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="building-units-preview" class="units-preview" style="margin-top:10px;"></div>
+            </div>
+
+            <button id="btn-save-building" class="btn btn-primary" style="width:100%;padding:13px;margin-top:14px;">💾 حفظ العمارة وتوليد الوحدات</button>
         </div>
     </div>
 
