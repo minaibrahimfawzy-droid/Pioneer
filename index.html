@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>بايونير للإدارة العقارية — PPMS</title>
+    <meta name="description" content="نظام بايونير لإدارة المشروعات العقارية والعمائر والوحدات السكنية">
+    <meta name="theme-color" content="#0c2b5c">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+    <!-- Toast -->
+    <div id="toast-container"></div>
+
+    <!-- Lease Alert Banner -->
+    <div id="lease-alert-banner" class="lease-alert-banner hidden">
+        <span id="lease-alert-icon">🔔</span>
+        <span id="lease-alert-text"></span>
+        <button onclick="document.getElementById('lease-alert-banner').classList.add('hidden')" class="btn-close-banner">×</button>
+    </div>
+
+    <!-- ══ شاشة التفعيل ══ -->
+    <div id="activation-screen" class="auth-container">
+        <div class="auth-card">
+            <div class="logo-area">
+                <div class="logo-placeholder">P</div>
+                <h2>بايونير للإدارة العقارية</h2>
+                <p>أرسل معرف الجهاز للمسؤول للحصول على كود التفعيل</p>
+            </div>
+            <div class="form-group">
+                <label for="device-id-input">📱 معرف الجهاز (Device ID):</label>
+                <input type="text" id="device-id-input" readonly class="readonly-input"
+                       style="font-size:18px; text-align:center; letter-spacing:4px; font-family:var(--font-mono);">
+            </div>
+            <div class="form-group" style="margin-top:16px;">
+                <label for="activation-code">🔑 أدخل كود التفعيل:</label>
+                <input type="number" id="activation-code" placeholder="أدخل الكود هنا"
+                       style="font-size:18px; text-align:center;" inputmode="numeric">
+            </div>
+            <button id="btn-activate" class="btn btn-primary" style="width:100%; padding:14px; font-size:16px;">
+                🔓 تفعيل الجهاز الآن
+            </button>
+            <div id="activation-error" class="error-message"></div>
+        </div>
+    </div>
+
+    <!-- ══ شاشة تسجيل الدخول (محجوزة) ══ -->
+    <div id="login-screen" class="auth-container hidden"></div>
+
+    <!-- ══ التطبيق الرئيسي ══ -->
+    <div id="app-container" class="app-layout hidden">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" role="navigation">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">P</div>
+                <span class="app-title">بايونير العقارية</span>
+                <span class="app-subtitle">PPMS v4.0 — PWA</span>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="#" class="menu-item active" data-target="view-dashboard"><span class="icon">📊</span> لوحة التحكم</a>
+                <a href="#" class="menu-item" data-target="view-projects"><span class="icon">🏢</span> المشروعات</a>
+                <a href="#" class="menu-item" data-target="view-buildings"><span class="icon">🏗️</span> العمائر</a>
+                <a href="#" class="menu-item" data-target="view-search"><span class="icon">🔍</span> البحث الذكي</a>
+                <a href="#" class="menu-item" data-target="view-reports"><span class="icon">📋</span> التقارير</a>
+                <a href="#" class="menu-item" data-target="view-archive"><span class="icon">🗄️</span> الأرشيف</a>
+                <a href="#" class="menu-item" data-target="view-settings"><span class="icon">⚙️</span> الإعدادات</a>
+            </nav>
+            <div class="sidebar-footer">
+                <span id="user-display-name" style="display:block;font-weight:700;font-size:13px;margin-bottom:6px;">المستخدم</span>
+                <button class="btn-logout" onclick="if(confirm('إعادة تعيين؟')){localStorage.clear();location.reload();}">🔄 إعادة تعيين</button>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="main-content">
+            <header class="top-bar">
+                <h1 id="page-title">لوحة التحكم</h1>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span id="connection-status" class="status-badge online">🟢 متصل</span>
+                    <button class="btn-icon" onclick="checkLeaseExpirations()" title="تحقق من إشعارات العقود">🔔</button>
+                </div>
+            </header>
+
+            <div class="content-body">
+
+                <!-- ══ لوحة التحكم ══ -->
+                <section id="view-dashboard" class="view-section">
+                    <div class="stats-grid">
+                        <div class="stat-card"><h3>📁 المشاريع</h3><p id="stat-projects">0</p></div>
+                        <div class="stat-card accent"><h3>🏗️ العمائر</h3><p id="stat-buildings">0</p></div>
+                        <div class="stat-card info"><h3>🏠 الوحدات</h3><p id="stat-units">0</p></div>
+                        <div class="stat-card success"><h3>⬜ فارغة</h3><p id="stat-vacant-units">0</p></div>
+                        <div class="stat-card warning"><h3>🟡 مؤجرة</h3><p id="stat-rented-units">0</p></div>
+                        <div class="stat-card" style="border-right-color:#6a1b9a;"><h3>🟢 مملوكة</h3><p id="stat-owned-units" style="color:#6a1b9a;">0</p></div>
+                    </div>
+                    <div class="dashboard-charts">
+                        <h3>📈 توزيع حالات الوحدات</h3>
+                        <div class="chart-container" style="max-width:360px;margin:0 auto;">
+                            <canvas id="unitsStatusChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ══ المشروعات ══ -->
+                <section id="view-projects" class="view-section hidden">
+                    <div class="section-header">
+                        <h2>المشروعات العقارية</h2>
+                        <button id="btn-add-project" class="btn btn-primary">➕ مشروع جديد</button>
+                    </div>
+                    <div class="table-container">
+                        <table aria-label="المشروعات">
+                            <thead><tr>
+                                <th>كود</th><th>الاسم</th><th>المدينة</th><th>الدولة</th><th>الحالة</th><th>الإجراءات</th>
+                            </tr></thead>
+                            <tbody id="projects-tbody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ══ العمائر ══ -->
+                <section id="view-buildings" class="view-section hidden">
+                    <div class="section-header">
+                        <h2>إدارة العمائر والوحدات</h2>
+                        <button id="btn-add-building" class="btn btn-primary">➕ عمارة إضافية</button>
+                    </div>
+                    <div class="table-container">
+                        <table aria-label="العمائر">
+                            <thead><tr>
+                                <th>كود العمارة</th><th>المشروع</th><th>الأدوار</th><th>وحدات/دور</th><th>إجمالي الوحدات</th><th>الإجراءات</th>
+                            </tr></thead>
+                            <tbody id="buildings-tbody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ══ البحث الذكي ══ -->
+                <section id="view-search" class="view-section hidden">
+                    <!-- شريط البحث -->
+                    <div class="search-panel">
+                        <div class="search-bar">
+                            <input type="text" id="search-input" placeholder="🔍  ابحث بكود الوحدة أو اسم الشاغل أو المشروع..." autocomplete="off">
+                            <button id="btn-trigger-search" class="btn btn-primary">بحث</button>
+                            <button id="btn-clear-search" class="btn btn-secondary">مسح</button>
+                        </div>
+                        <!-- فلاتر -->
+                        <div class="filter-bar">
+                            <span class="filter-label">فلتر:</span>
+                            <button class="filter-btn active" data-filter="all">الكل</button>
+                            <button class="filter-btn" data-filter="مؤجرة">🟡 مؤجرة</button>
+                            <button class="filter-btn" data-filter="مملوكة">🟢 مملوكة</button>
+                            <button class="filter-btn" data-filter="فارغة">⬜ فارغة</button>
+                            <button class="filter-btn" data-filter="جاهزة">✅ جاهزة</button>
+                            <button class="filter-btn filter-btn-pet" data-filter="pets">🐾 حيوانات أليفة</button>
+                            <button class="filter-btn filter-btn-elder" data-filter="elderly">👴 كبار سن</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table aria-label="نتائج البحث">
+                            <thead><tr>
+                                <th>كود الوحدة</th><th>الشاغل</th><th>النوع</th><th>الدور</th><th>الحالة</th><th>انتهاء العقد</th><th>🐾</th><th>👴</th><th>الإجراءات</th>
+                            </tr></thead>
+                            <tbody id="search-tbody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ══ التقارير ══ -->
+                <section id="view-reports" class="view-section hidden">
+                    <div class="section-header"><h2>التقارير والإحصائيات</h2></div>
+                    <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-report" data-report-type="projects">📁 المشروعات</button>
+                        <button class="btn btn-secondary btn-report" data-report-type="units-vacant">⬜ الشاغرة</button>
+                        <button class="btn btn-secondary btn-report" data-report-type="units-rented">🟡 المؤجرة</button>
+                        <button class="btn btn-secondary btn-report" data-report-type="units-owned">🟢 المملوكة</button>
+                        <button class="btn btn-secondary btn-report" data-report-type="lease-expiry">⏰ انتهاء العقود</button>
+                        <button class="btn btn-secondary btn-report" data-report-type="audit-log">📝 سجل العمليات</button>
+                    </div>
+                    <div class="table-container">
+                        <div id="report-output-header" class="report-header hidden">
+                            <h3 id="report-title-display">التقرير</h3>
+                            <button id="btn-export-report" class="btn btn-secondary btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3);">⬇️ CSV</button>
+                        </div>
+                        <table id="reports-output-table" class="hidden">
+                            <thead><tr id="reports-table-headers"></tr></thead>
+                            <tbody id="reports-tbody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ══ الأرشيف ══ -->
+                <section id="view-archive" class="view-section hidden">
+                    <div class="section-header">
+                        <h2>🗄️ أرشيف المستأجرين السابقين</h2>
+                    </div>
+                    <div class="search-bar" style="margin-bottom:16px;">
+                        <input type="text" id="archive-search-input" placeholder="ابحث باسم المستأجر أو كود الوحدة...">
+                        <button id="btn-archive-search" class="btn btn-primary">بحث</button>
+                        <button id="btn-archive-show-all" class="btn btn-secondary">عرض الكل</button>
+                    </div>
+                    <div id="archive-cards-container" class="archive-grid"></div>
+                </section>
+
+                <!-- ══ الإعدادات ══ -->
+                <section id="view-settings" class="view-section hidden">
+                    <div class="section-header"><h2>الإعدادات والمزامنة</h2></div>
+                    <div class="settings-grid">
+
+                        <div class="settings-card">
+                            <h3>🔔 إعدادات تنبيهات العقود</h3>
+                            <div class="form-group">
+                                <label for="lease-alert-days">تنبيه قبل انتهاء العقد بـ (يوم):</label>
+                                <input type="number" id="lease-alert-days" value="30" min="1" max="365" style="font-family:var(--font-mono);">
+                            </div>
+                            <button id="btn-save-alert-days" class="btn btn-primary" style="width:100%;">💾 حفظ الإعداد</button>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3>🔗 الاتصال المباشر (P2P)</h3>
+                            <div class="form-group" style="margin-bottom:12px;">
+                                <label>ID جهازك (شاركه مع زميلك):</label>
+                                <div style="display:flex;gap:8px;">
+                                    <input type="text" id="my-peer-id-display" readonly class="readonly-input"
+                                           style="font-family:var(--font-mono);font-size:16px;font-weight:700;letter-spacing:2px;text-align:center;flex:1;">
+                                    <button class="btn btn-secondary btn-sm" onclick="copyPeerId()" title="نسخ">📋</button>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom:12px;">
+                                <label>أدخل ID الزميل للمزامنة:</label>
+                                <input type="text" id="peer-connection-input" placeholder="مثال: 1092837" inputmode="numeric">
+                            </div>
+                            <button class="btn btn-primary" style="width:100%;" onclick="connectAndSyncLive()">🔄 ربط ومزامنة</button>
+                            <div style="margin-top:10px;text-align:center;">
+                                <span id="p2p-status-badge" class="status-badge">⚪ غير متصل</span>
+                            </div>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3>💾 النسخ الاحتياطي</h3>
+                            <button id="btn-export-db" class="btn btn-primary" style="width:100%;margin-bottom:10px;">⬆️ تصدير Backup</button>
+                            <label for="import-db-file" class="btn btn-secondary" style="width:100%;cursor:pointer;justify-content:center;">⬇️ استيراد Backup</label>
+                            <input type="file" id="import-db-file" accept=".json" class="hidden">
+                        </div>
+
+                        <div class="settings-card">
+                            <h3>🛠️ معلومات النظام</h3>
+                            <div style="font-size:13px;color:var(--text-muted);line-height:2.2;">
+                                <div>الإصدار: <strong style="color:var(--primary);">PPMS v4.0</strong></div>
+                                <div>قاعدة البيانات: <strong style="color:var(--primary);">IndexedDB v3</strong></div>
+                                <div>Device ID: <code id="settings-device-id" style="font-family:var(--font-mono);font-size:13px;color:var(--accent);letter-spacing:2px;">—</code></div>
+                            </div>
+                            <button id="btn-clear-data" class="btn btn-danger" style="width:100%;margin-top:16px;font-size:12px;">🗑️ مسح كل البيانات</button>
+                        </div>
+
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         MODALS
+    ════════════════════════════════════════ -->
+
+    <!-- Modal: مشروع جديد -->
+    <div id="project-modal" class="modal hidden" role="dialog" aria-modal="true">
+        <div class="modal-content">
+            <span class="close-modal">×</span>
+            <h2>➕ إضافة مشروع جديد</h2>
+            <p class="modal-note">سيتم توليد 14 عمارة (A-N) تلقائياً عند الحفظ.</p>
+            <div class="form-group">
+                <label for="modal-project-code">كود المشروع:</label>
+                <input type="text" id="modal-project-code" placeholder="COMP1" style="font-family:var(--font-mono);font-weight:700;text-transform:uppercase;">
+            </div>
+            <div class="form-group">
+                <label for="modal-project-name">اسم المشروع:</label>
+                <input type="text" id="modal-project-name" placeholder="اسم المشروع الكامل">
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="modal-project-city">المدينة:</label>
+                    <input type="text" id="modal-project-city" value="القاهرة">
+                </div>
+                <div class="form-group">
+                    <label for="modal-project-country">الدولة:</label>
+                    <input type="text" id="modal-project-country" value="مصر">
+                </div>
+            </div>
+            <!-- إعدادات الوحدات -->
+            <div class="unit-config-box">
+                <h4>🏗️ إعدادات توليد الوحدات (لكل عمارة)</h4>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="modal-project-floors">عدد الأدوار:</label>
+                        <input type="number" id="modal-project-floors" value="5" min="1" max="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-project-units-per-floor">وحدات في كل دور:</label>
+                        <input type="number" id="modal-project-units-per-floor" value="4" min="1" max="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-project-area">مساحة الوحدة (م²):</label>
+                        <input type="number" id="modal-project-area" value="120" min="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-project-init-status">الحالة الابتدائية:</label>
+                        <select id="modal-project-init-status">
+                            <option value="فارغة">فارغة</option>
+                            <option value="جاهزة">جاهزة</option>
+                            <option value="تحت الإنشاء">تحت الإنشاء</option>
+                            <option value="تحت التشطيب">تحت التشطيب</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="project-units-preview" class="units-preview"></div>
+            </div>
+            <button id="btn-save-project" class="btn btn-primary" style="width:100%;padding:13px;">💾 حفظ المشروع وتوليد العمائر</button>
+        </div>
+    </div>
+
+    <!-- Modal: عمارة إضافية -->
+    <div id="building-modal" class="modal hidden" role="dialog" aria-modal="true">
+        <div class="modal-content">
+            <span class="close-modal">×</span>
+            <h2>🏗️ إضافة عمارة إضافية</h2>
+            <div class="form-group">
+                <label>اختر المشروع:</label>
+                <select id="modal-building-project-select"></select>
+            </div>
+            <div class="form-group">
+                <label for="modal-building-code">كود العمارة (مثل: O):</label>
+                <input type="text" id="modal-building-code" placeholder="O" maxlength="10" style="font-family:var(--font-mono);font-weight:700;text-transform:uppercase;text-align:center;letter-spacing:3px;">
+            </div>
+            <div class="unit-config-box">
+                <h4>🏗️ إعدادات الوحدات</h4>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="modal-building-floors">عدد الأدوار:</label>
+                        <input type="number" id="modal-building-floors" value="5" min="1" max="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-building-units-per-floor">وحدات في كل دور:</label>
+                        <input type="number" id="modal-building-units-per-floor" value="4" min="1" max="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-building-area">مساحة الوحدة (م²):</label>
+                        <input type="number" id="modal-building-area" value="120" min="20">
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-building-init-status">الحالة الابتدائية:</label>
+                        <select id="modal-building-init-status">
+                            <option value="فارغة">فارغة</option>
+                            <option value="جاهزة">جاهزة</option>
+                            <option value="تحت الإنشاء">تحت الإنشاء</option>
+                            <option value="تحت التشطيب">تحت التشطيب</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-save-building" class="btn btn-primary" style="width:100%;padding:13px;">💾 حفظ وتوليد الوحدات</button>
+        </div>
+    </div>
+
+    <!-- Modal: تعديل حالة الوحدة -->
+    <div id="unit-status-modal" class="modal hidden" role="dialog" aria-modal="true">
+        <div class="modal-content" style="max-width:380px;">
+            <span class="close-modal">×</span>
+            <h2>✏️ تعديل حالة الوحدة</h2>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">كود الوحدة: <code id="status-modal-unit-code" style="font-family:var(--font-mono);color:var(--accent);"></code></p>
+            <div class="form-group">
+                <label for="status-modal-select">اختر الحالة الجديدة:</label>
+                <select id="status-modal-select" style="font-size:15px;padding:12px;">
+                    <option value="جاهزة">✅ جاهزة</option>
+                    <option value="فارغة">⬜ فارغة</option>
+                    <option value="تحت التشطيب">🔨 تحت التشطيب</option>
+                    <option value="تحت الإنشاء">🏗️ تحت الإنشاء</option>
+                    <option value="مؤجرة">🟡 مؤجرة</option>
+                    <option value="مملوكة">🟢 مملوكة</option>
+                </select>
+            </div>
+            <button id="btn-confirm-status-change" class="btn btn-primary" style="width:100%;padding:13px;">💾 تأكيد التغيير</button>
+        </div>
+    </div>
+
+    <!-- ── مودال تفاصيل الأرشيف ── -->
+    <div id="archive-details-modal" class="modal hidden" role="dialog" aria-modal="true">
+        <div class="modal-content" style="max-width:640px; max-height:90vh; overflow-y:auto; display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:2px solid var(--border); padding-bottom:12px; position:sticky; top:0; background:var(--surface); z-index:1;">
+                <h2 style="margin:0; font-size:16px;">📋 تفاصيل المستأجر المؤرشف</h2>
+                <span class="close-modal" onclick="closeModal('archive-details-modal')" style="cursor:pointer; font-size:20px; line-height:1; padding:4px 8px;">✖</span>
+            </div>
+            <div id="archive-details-body" style="font-size:13px; line-height:1.9;">
+                <!-- سيتم حقن التفاصيل هنا -->
+            </div>
+            <div id="archive-documents-body" style="margin-top:16px; border-top:2px solid var(--border); padding-top:14px;">
+                <h3 style="font-size:14px; color:var(--primary); margin-bottom:12px; font-weight:800;">📁 الوثائق والصور المرفقة</h3>
+                <div id="archive-docs-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="db.js"></script>
+    <script src="activation.js"></script>
+    <script src="seed.js"></script>
+    <script src="operations.js"></script>
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(r => console.log('✅ SW:', r.scope))
+                    .catch(e => console.warn('SW failed:', e));
+            });
+        }
+    </script>
+</body>
+</html>
