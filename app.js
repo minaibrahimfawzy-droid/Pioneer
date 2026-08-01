@@ -711,10 +711,17 @@ async function handleSearch() {
         );
     }).map(u => ({ ...u, _occupant: occupantMap[u.unitCode] || null }));
 
-    // الترتيب حسب الدور ثم ترتيب الوحدة داخل الدور
+    // الترتيب حسب الدور ثم ترتيب الوحدة داخل الدور (مع دعم الوحدات القديمة التي لا تحتوي على حقل الدور)
     lastSearchResults.sort((a, b) => {
-        if (a.floor !== b.floor) return (a.floor || 0) - (b.floor || 0);
-        return (a.unitInFloor || 0) - (b.unitInFloor || 0);
+        const floorA = a.floor || 0;
+        const floorB = b.floor || 0;
+        if (floorA !== floorB && floorA !== 0 && floorB !== 0) {
+            return floorA - floorB;
+        }
+        // في حالة تساوي الدور أو عدم وجوده، نرتب بناءً على الرقم المستخرج من كود الوحدة
+        const numA = parseInt((a.unitCode.match(/\d+$/) || [0])[0], 10);
+        const numB = parseInt((b.unitCode.match(/\d+$/) || [0])[0], 10);
+        return numA - numB;
     });
 
     // إعادة ضبط الفلاتر
