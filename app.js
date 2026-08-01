@@ -711,6 +711,12 @@ async function handleSearch() {
         );
     }).map(u => ({ ...u, _occupant: occupantMap[u.unitCode] || null }));
 
+    // الترتيب حسب الدور ثم ترتيب الوحدة داخل الدور
+    lastSearchResults.sort((a, b) => {
+        if (a.floor !== b.floor) return (a.floor || 0) - (b.floor || 0);
+        return (a.unitInFloor || 0) - (b.unitInFloor || 0);
+    });
+
     // إعادة ضبط الفلاتر
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.filter-btn[data-filter="all"]')?.classList.add('active');
@@ -744,7 +750,10 @@ function renderSearchResults(results) {
         return;
     }
 
-    tbody.innerHTML = results.map(u => {
+    let currentFloor = null;
+    let html = '';
+
+    results.forEach(u => {
         const occ     = u._occupant;
         const occType = u.occupantType || 'vacant';
         const [occLabel, occClass] = occupantTypeLabel[occType] || occupantTypeLabel['vacant'];
@@ -757,7 +766,12 @@ function renderSearchResults(results) {
             expiryHtml = `<span class="${cls}">${days < 0 ? `منتهي منذ ${Math.abs(days)} يوم` : `${days} يوم`}</span>`;
         }
 
-        return `
+        if (u.floor !== currentFloor) {
+            currentFloor = u.floor;
+            html += `<tr class="floor-separator" style="background:var(--bg-2);border:none;box-shadow:none;"><td colspan="9" style="text-align:center;font-weight:900;color:var(--primary);font-size:16px;padding:12px;border:none;justify-content:center;">الدور ${currentFloor}</td></tr>`;
+        }
+
+        html += `
         <tr class="row-${occType}">
             <td data-label="كود الوحدة"><code style="font-family:var(--font-mono);font-weight:700;color:var(--primary);">${escHtml(u.unitCode)}</code></td>
             <td data-label="الشاغل">${occ ? `<div style="font-weight:700;">${escHtml(occ.fullName)}</div><div style="font-size:11px;color:var(--text-muted);">${escHtml(occ.idNumber||'')}</div>` : '<span style="color:var(--text-muted);">—</span>'}</td>
@@ -775,7 +789,9 @@ function renderSearchResults(results) {
                 </div>
             </td>
         </tr>`;
-    }).join('');
+    });
+    
+    tbody.innerHTML = html;
 }
 
 function clearSearch() {
