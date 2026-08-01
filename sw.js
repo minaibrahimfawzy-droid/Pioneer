@@ -10,7 +10,7 @@
 
 'use strict';
 
-const CACHE_NAME = 'ppms-cache-v21';
+const CACHE_NAME = 'ppms-cache-v22';
 
 const LOCAL_ASSETS = [
     './',

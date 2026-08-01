@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 900);
             } else {
                 showActivationMsg(
-                    `❌ كود التفعيل غير صحيح!\nالكود الصحيح = ${deviceId} × 7`,
+                    `❌ كود التفعيل غير صحيح! يرجى المحاولة مرة أخرى.`,
                     false
                 );
                 btn.disabled  = false;
