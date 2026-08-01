@@ -24,6 +24,13 @@
         <button onclick="document.getElementById('lease-alert-banner').classList.add('hidden')" class="btn-close-banner">×</button>
     </div>
 
+    <!-- Update Alert Banner -->
+    <div id="update-alert-banner" class="lease-alert-banner hidden" style="background: linear-gradient(90deg, #b91c1c, #dc2626); cursor: pointer;" onclick="window.location.reload()">
+        <span id="update-alert-icon">🔄</span>
+        <span id="update-alert-text">تحديث جديد متوفر! (اضغط هنا للتحديث)</span>
+        <button onclick="event.stopPropagation(); document.getElementById('update-alert-banner').classList.add('hidden')" class="btn-close-banner">×</button>
+    </div>
+
     <!-- ══ شاشة التفعيل ══ -->
     <div id="activation-screen" class="auth-container">
         <div class="auth-card">
@@ -414,7 +421,21 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                    .then(r => console.log('✅ SW:', r.scope))
+                    .then(reg => {
+                        console.log('✅ SW:', reg.scope);
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    const banner = document.getElementById('update-alert-banner');
+                                    if (banner) {
+                                        banner.classList.remove('hidden');
+                                        document.body.classList.add('has-banner');
+                                    }
+                                }
+                            });
+                        });
+                    })
                     .catch(e => console.warn('SW failed:', e));
             });
         }
