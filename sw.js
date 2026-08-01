@@ -10,7 +10,7 @@
 
 'use strict';
 
-const CACHE_NAME = 'ppms-cache-v20';
+const CACHE_NAME = 'ppms-cache-v21';
 
 const LOCAL_ASSETS = [
     './',
@@ -34,7 +34,10 @@ const CDN_ASSETS = [
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll([...LOCAL_ASSETS, ...CDN_ASSETS]))
+            .then(cache => {
+                const requests = [...LOCAL_ASSETS, ...CDN_ASSETS].map(url => new Request(url, { cache: 'reload' }));
+                return cache.addAll(requests);
+            })
             .then(() => self.skipWaiting())
             .catch(err => console.warn('SW install cache error:', err))
     );
