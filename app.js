@@ -491,6 +491,7 @@ async function handleSaveProject() {
                 uStore.add({
                     projectCode: code,
                     buildingCode: firstBuildingCode,
+                    floor: f,
                     floorNumber: f,
                     unitCode: uCode,
                     area: area,
@@ -1045,17 +1046,32 @@ async function generateReport(type) {
         cols  = ['كود','الاسم','المدينة','الدولة','الأدوار','وحدات/دور','تاريخ الإنشاء'];
         data  = (await getAllProjects().catch(() => [])).map(p => [p.projectCode, p.projectName, p.city, p.country, p.floors||'—', p.unitPerFloor||'—', p.createdAt ? new Date(p.createdAt).toLocaleDateString('ar-EG') : '—']);
 
-    } else if (type === 'units-vacant') {
-        title = 'الوحدات الشاغرة'; cols = ['كود الوحدة','المشروع','العمارة','الدور','المساحة','الحالة'];
-        data  = (await getAllUnits().catch(() => [])).filter(u => u.status==='فارغة').map(u => [u.unitCode,u.projectCode,u.buildingCode,`الدور ${u.floor}`,`${u.area} م²`,u.status]);
+    } else if (type.startsWith('units-')) {
+        const allUnits = await getAllUnits().catch(() => []);
+        allUnits.sort((a, b) => {
+            const projCmp = String(a.projectCode || '').localeCompare(String(b.projectCode || ''));
+            if (projCmp !== 0) return projCmp;
+            const bldgCmp = String(a.buildingCode || '').localeCompare(String(b.buildingCode || ''));
+            if (bldgCmp !== 0) return bldgCmp;
+            const floorA = a.floor || a.floorNumber || 0;
+            const floorB = b.floor || b.floorNumber || 0;
+            if (floorA !== floorB && floorA !== 0 && floorB !== 0) return floorA - floorB;
+            const numA = parseInt((a.unitCode.match(/\d+$/) || [0])[0], 10);
+            const numB = parseInt((b.unitCode.match(/\d+$/) || [0])[0], 10);
+            return numA - numB;
+        });
 
-    } else if (type === 'units-rented') {
-        title = 'الوحدات المؤجرة'; cols = ['كود الوحدة','المشروع','العمارة','الدور','المساحة','الحالة'];
-        data  = (await getAllUnits().catch(() => [])).filter(u => u.status==='مؤجرة').map(u => [u.unitCode,u.projectCode,u.buildingCode,`الدور ${u.floor}`,`${u.area} م²`,u.status]);
-
-    } else if (type === 'units-owned') {
-        title = 'الوحدات المملوكة'; cols = ['كود الوحدة','المشروع','العمارة','الدور','المساحة','الحالة'];
-        data  = (await getAllUnits().catch(() => [])).filter(u => u.status==='مملوكة').map(u => [u.unitCode,u.projectCode,u.buildingCode,`الدور ${u.floor}`,`${u.area} م²`,u.status]);
+        cols = ['كود الوحدة','المشروع','العمارة','الدور','المساحة','الحالة'];
+        if (type === 'units-vacant') {
+            title = 'الوحدات الشاغرة';
+            data  = allUnits.filter(u => u.status==='فارغة').map(u => [u.unitCode,u.projectCode,u.buildingCode,`الدور ${u.floor || u.floorNumber || '—'}`,`${u.area} م²`,u.status]);
+        } else if (type === 'units-rented') {
+            title = 'الوحدات المؤجرة';
+            data  = allUnits.filter(u => u.status==='مؤجرة').map(u => [u.unitCode,u.projectCode,u.buildingCode,`الدور ${u.floor || u.floorNumber || '—'}`,`${u.area} م²`,u.status]);
+        } else if (type === 'units-owned') {
+            title = 'الوحدات المملوكة';
+            data  = allUnits.filter(u => u.status==='مملوكة').map(u => [u.unitCode,u.projectCode,u.buildingCode,`الدور ${u.floor || u.floorNumber || '—'}`,`${u.area} م²`,u.status]);
+        }
 
     } else if (type === 'lease-expiry') {
         title = 'تقرير انتهاء عقود الإيجار';
