@@ -277,13 +277,14 @@
 
     <!-- Modal: مشروع جديد -->
     <div id="project-modal" class="modal hidden" role="dialog" aria-modal="true">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:580px;max-height:90vh;overflow-y:auto;">
             <span class="close-modal">×</span>
             <h2>➕ إضافة مشروع جديد</h2>
-            <p class="modal-note">سيتم توليد 14 عمارة (A-N) تلقائياً عند الحفظ.</p>
+
+            <!-- بيانات المشروع الأساسية -->
             <div class="form-group">
                 <label for="modal-project-code">كود المشروع:</label>
-                <input type="text" id="modal-project-code" placeholder="COMP1" style="font-family:var(--font-mono);font-weight:700;text-transform:uppercase;">
+                <input type="text" id="modal-project-code" placeholder="مثال: MINA" style="font-family:var(--font-mono);font-weight:700;text-transform:uppercase;">
             </div>
             <div class="form-group">
                 <label for="modal-project-name">اسم المشروع:</label>
@@ -299,37 +300,65 @@
                     <input type="text" id="modal-project-country" value="مصر">
                 </div>
             </div>
-            <!-- إعدادات الوحدات -->
-            <div class="unit-config-box">
-                <h4>🏗️ إعدادات توليد الوحدات (لكل عمارة)</h4>
+
+            <!-- عدد العمائر -->
+            <div class="unit-config-box" style="margin-top:14px;">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="modal-project-floors">عدد الأدوار:</label>
-                        <input type="number" id="modal-project-floors" value="5" min="1" max="50">
+                        <label for="modal-project-num-buildings">🏗️ عدد العمائر في المشروع:</label>
+                        <input type="number" id="modal-project-num-buildings" value="1" min="1" max="26" oninput="updateFloorPreview()">
+                        <small style="color:var(--text-muted);font-size:11px;">ستُسمى تلقائياً A، B، C... حسب العدد</small>
                     </div>
                     <div class="form-group">
-                        <label for="modal-project-units-per-floor">وحدات في كل دور:</label>
-                        <input type="number" id="modal-project-units-per-floor" value="4" min="1" max="20">
-                    </div>
-                    <div class="form-group">
-                        <label for="modal-project-area">مساحة الوحدة (م²):</label>
-                        <input type="number" id="modal-project-area" value="120" min="20">
-                    </div>
-                    <div class="form-group">
-                        <label for="modal-project-init-status">الحالة الابتدائية:</label>
-                        <select id="modal-project-init-status">
-                            <option value="فارغة">فارغة</option>
-                            <option value="جاهزة">جاهزة</option>
-                            <option value="تحت الإنشاء">تحت الإنشاء</option>
-                            <option value="تحت التشطيب">تحت التشطيب</option>
+                        <label for="modal-project-init-status">الحالة الابتدائية للوحدات:</label>
+                        <select id="modal-project-init-status" onchange="onStatusSelectChange(this)">
+                            <option value="فارغة">⬜ فارغة</option>
+                            <option value="جاهزة">✅ جاهزة</option>
+                            <option value="تحت الإنشاء">🏗️ تحت الإنشاء</option>
+                            <option value="تحت التشطيب">🔨 تحت التشطيب</option>
+                            <option value="مؤجرة">🟡 مؤجرة</option>
+                            <option value="مملوكة">🟢 مملوكة</option>
+                            <option value="__custom__">✏️ اكتبها بنفسك...</option>
                         </select>
+                        <div class="custom-status-group" style="display:none;margin-top:6px;">
+                            <input type="text" id="modal-project-custom-status" placeholder="اكتب الحالة هنا...">
+                        </div>
                     </div>
                 </div>
-                <div id="project-units-preview" class="units-preview"></div>
             </div>
-            <button id="btn-save-project" class="btn btn-primary" style="width:100%;padding:13px;">💾 حفظ المشروع وتوليد العمائر</button>
+
+            <!-- إعداد الأدوار (ديناميكي) -->
+            <div class="unit-config-box" style="margin-top:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h4 style="margin:0;">📐 إعداد الأدوار (كل دور على حدة)</h4>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="addFloorRow()">➕ إضافة دور</button>
+                </div>
+                <div id="floor-configs-container">
+                    <!-- الدور الأول الافتراضي -->
+                    <div class="floor-config-row">
+                        <div class="floor-row-header">
+                            <span class="floor-label">الدور 1</span>
+                            <button type="button" class="btn btn-danger btn-xs" onclick="removeFloorRow(this)">✕</button>
+                        </div>
+                        <div class="floor-row-inputs">
+                            <div class="form-group">
+                                <label>وحدات في الدور:</label>
+                                <input type="number" class="input-units" value="4" min="1" max="50" oninput="updateFloorPreview()">
+                            </div>
+                            <div class="form-group">
+                                <label>مساحة الوحدة (م²):</label>
+                                <input type="number" class="input-area" value="120" min="20">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="project-units-preview" class="units-preview" style="margin-top:10px;"></div>
+            </div>
+
+            <button id="btn-save-project" class="btn btn-primary" style="width:100%;padding:13px;margin-top:14px;">💾 حفظ المشروع وتوليد العمائر</button>
         </div>
     </div>
+
 
     <!-- Modal: عمارة إضافية -->
     <div id="building-modal" class="modal hidden" role="dialog" aria-modal="true">

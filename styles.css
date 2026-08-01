@@ -317,6 +317,24 @@ body.has-banner .app-layout { padding-top: 50px; }
     font-family: var(--font-mono);
 }
 
+/* Floor Config Rows */
+.floor-config-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+.floor-row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.floor-label { font-weight: 800; color: var(--primary); font-size: 13px; }
+.floor-row-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn-xs { padding: 2px 8px; font-size: 11px; border-radius: 4px; }
+
 /* ══════════════════════════════════════
    BUTTONS
 ══════════════════════════════════════ */

@@ -81,6 +81,16 @@ window.proceedToDashboardDirectly = function () {
     const app = document.getElementById('app-container');
     if (app) { app.classList.remove('hidden'); app.classList.add('app-layout'); }
 
+    // إخفاء كل الأقسام أولاً وإظهار Dashboard فقط
+    document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
+    const dash = document.getElementById('view-dashboard');
+    if (dash) dash.classList.remove('hidden');
+
+    // تفعيل عنصر القائمة المناسب
+    document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+    const dashMenuItem = document.querySelector('.menu-item[data-target="view-dashboard"]');
+    if (dashMenuItem) dashMenuItem.classList.add('active');
+
     // تحميل إعدادات التنبيه
     getLeaseAlertDays().then(days => {
         const inp = document.getElementById('lease-alert-days');
@@ -88,7 +98,6 @@ window.proceedToDashboardDirectly = function () {
     });
 
     initP2PLiveConnection();
-    switchView('view-dashboard');
 
     // فحص إشعارات العقود عند كل فتح
     setTimeout(checkLeaseExpirations, 1200);
@@ -394,18 +403,45 @@ function generateUnitCode(projectCode, buildingCode, floor, unitInFloor, unitsPe
     return `${projectCode}-${buildingCode}${seqNum}`;
 }
 
+// قراءة قيمة الحالة مع دعم "اكتبها بنفسك"
+function getStatusValue(selectId, customId) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return 'فارغة';
+    if (sel.value === '__custom__') {
+        return document.getElementById(customId)?.value.trim() || 'فارغة';
+    }
+    return sel.value;
+}
+
+// ربط حدث تغيير الـ select لإظهار/إخفاء حقل الكتابة
+window.onStatusSelectChange = function(selectEl) {
+    const customGroup = selectEl.closest('.form-group')?.querySelector('.custom-status-group');
+    if (customGroup) {
+        customGroup.style.display = selectEl.value === '__custom__' ? 'block' : 'none';
+    }
+};
+
 async function handleSaveProject() {
     const code    = document.getElementById('modal-project-code')?.value.trim().toUpperCase();
     const name    = document.getElementById('modal-project-name')?.value.trim();
     const city    = document.getElementById('modal-project-city')?.value.trim()    || 'القاهرة';
     const country = document.getElementById('modal-project-country')?.value.trim() || 'مصر';
-    const floors       = parseInt(document.getElementById('modal-project-floors')?.value, 10)          || 5;
-    const unitPerFloor = parseInt(document.getElementById('modal-project-units-per-floor')?.value, 10) || 4;
-    const area         = parseInt(document.getElementById('modal-project-area')?.value, 10)            || 120;
-    const initStatus   = document.getElementById('modal-project-init-status')?.value || 'فارغة';
+    const numBuildings = parseInt(document.getElementById('modal-project-num-buildings')?.value, 10) || 1;
+    const initStatus   = getStatusValue('modal-project-init-status', 'modal-project-custom-status');
+
+    // قراءة إعدادات كل دور
+    const floorConfigs = [];
+    const floorConfigsEl = document.getElementById('floor-configs-container');
+    if (floorConfigsEl) {
+        floorConfigsEl.querySelectorAll('.floor-config-row').forEach(row => {
+            const units = parseInt(row.querySelector('.input-units')?.value, 10) || 4;
+            const area  = parseInt(row.querySelector('.input-area')?.value, 10)  || 120;
+            floorConfigs.push({ units, area });
+        });
+    }
+    if (!floorConfigs.length) { showToast('أضف دوراً واحداً على الأقل.', 'error'); return; }
 
     const saveBtn = document.getElementById('btn-save-project');
-
     if (!code || !name) { showToast('يرجى إدخال كود واسم المشروع.', 'error'); return; }
     if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spinner"></span> جاري الحفظ...'; }
 
@@ -429,18 +465,23 @@ async function handleSaveProject() {
         const bStore = tx.objectStore('buildings');
         const uStore = tx.objectStore('units');
 
-        pStore.put({ projectCode: code, projectName: name, city, country, floors, unitPerFloor, area, createdAt: new Date().toISOString() });
+        const totalFloors = floorConfigs.length;
+        const totalUnitsPerBuilding = floorConfigs.reduce((s, c) => s + c.units, 0);
+        pStore.put({ projectCode: code, projectName: name, city, country, floors: totalFloors, unitPerFloor: floorConfigs[0]?.units || 4, area: floorConfigs[0]?.area || 120, createdAt: new Date().toISOString() });
 
-        const buildingLetters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N'];
-        const totalUnits      = floors * unitPerFloor;
+        const allLetters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+        const buildingLetters = allLetters.slice(0, numBuildings);
 
         buildingLetters.forEach(letter => {
-            bStore.add({ projectCode: code, buildingCode: letter, floors, unitPerFloor, unitsCount: totalUnits, createdAt: new Date().toISOString() });
+            bStore.add({ projectCode: code, buildingCode: letter, floors: totalFloors, unitPerFloor: floorConfigs[0]?.units || 4, unitsCount: totalUnitsPerBuilding, createdAt: new Date().toISOString() });
 
-            for (let f = 1; f <= floors; f++) {
-                for (let u = 1; u <= unitPerFloor; u++) {
-                    const unitCode = generateUnitCode(code, letter, f, u, unitPerFloor);
+            let seqNum = 1;
+            for (let f = 1; f <= totalFloors; f++) {
+                const { units, area } = floorConfigs[f - 1];
+                for (let u = 1; u <= units; u++) {
+                    const unitCode = `${code}-${letter}${seqNum}`;
                     uStore.put({ unitCode, projectCode: code, buildingCode: letter, floor: f, unitInFloor: u, area, rooms: area >= 150 ? 4 : 3, type: 'شقة سكنية', status: initStatus, hasPets: false, hasElderly: false, occupantType: 'vacant', updatedAt: new Date().toISOString() });
+                    seqNum++;
                 }
             }
         });
@@ -450,9 +491,9 @@ async function handleSaveProject() {
         closeModal('project-modal');
         document.getElementById('modal-project-code').value = '';
         document.getElementById('modal-project-name').value = '';
-        const totalAll = buildingLetters.length * totalUnits;
-        showToast(`✅ تم إنشاء "${name}": 14 عمارة × ${totalUnits} وحدة = ${totalAll} وحدة.`);
-        addLogEntry('admin', 'ADD_PROJECT', `${code} — ${name}: ${floors} دور × ${unitPerFloor} وحدة/دور`);
+        const totalAll = buildingLetters.length * totalUnitsPerBuilding;
+        showToast(`✅ تم إنشاء "${name}": ${numBuildings} عمارة × ${totalUnitsPerBuilding} وحدة = ${totalAll} وحدة.`);
+        addLogEntry('admin', 'ADD_PROJECT', `${code} — ${name}: ${totalFloors} دور`);
         loadProjectsData();
         loadBuildingsData();
         loadDashboardData();
@@ -463,6 +504,64 @@ async function handleSaveProject() {
     } finally {
         if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '💾 حفظ المشروع وتوليد العمائر'; }
     }
+}
+
+// إضافة صف دور جديد
+window.addFloorRow = function() {
+    const container = document.getElementById('floor-configs-container');
+    if (!container) return;
+    const rowNum = container.querySelectorAll('.floor-config-row').length + 1;
+    const row = document.createElement('div');
+    row.className = 'floor-config-row';
+    row.innerHTML = `
+        <div class="floor-row-header">
+            <span class="floor-label">الدور ${rowNum}</span>
+            <button type="button" class="btn btn-danger btn-xs" onclick="removeFloorRow(this)">✕</button>
+        </div>
+        <div class="floor-row-inputs">
+            <div class="form-group">
+                <label>وحدات في الدور:</label>
+                <input type="number" class="input-units" value="4" min="1" max="50" oninput="updateFloorPreview()">
+            </div>
+            <div class="form-group">
+                <label>مساحة الوحدة (م²):</label>
+                <input type="number" class="input-area" value="120" min="20">
+            </div>
+        </div>`;
+    container.appendChild(row);
+    updateFloorPreview();
+    renumberFloors();
+};
+
+window.removeFloorRow = function(btn) {
+    const container = document.getElementById('floor-configs-container');
+    if (!container || container.querySelectorAll('.floor-config-row').length <= 1) {
+        showToast('يجب أن يكون هناك دور واحد على الأقل.', 'warning');
+        return;
+    }
+    btn.closest('.floor-config-row').remove();
+    renumberFloors();
+    updateFloorPreview();
+};
+
+function renumberFloors() {
+    document.querySelectorAll('#floor-configs-container .floor-label').forEach((lbl, i) => {
+        lbl.textContent = `الدور ${i + 1}`;
+    });
+}
+
+function updateFloorPreview() {
+    const container = document.getElementById('floor-configs-container');
+    const preview   = document.getElementById('project-units-preview');
+    if (!container || !preview) return;
+    let total = 0;
+    container.querySelectorAll('.floor-config-row').forEach(row => {
+        total += parseInt(row.querySelector('.input-units')?.value, 10) || 0;
+    });
+    const numB = parseInt(document.getElementById('modal-project-num-buildings')?.value, 10) || 1;
+    preview.innerHTML = total > 0
+        ? `إجمالي لكل عمارة: <strong>${total} وحدة</strong> — إجمالي المشروع: <strong>${total * numB} وحدة</strong>`
+        : '';
 }
 
 // ══════════════════════════════════════════════════
